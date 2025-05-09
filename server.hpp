@@ -571,7 +571,8 @@ private:
     TaskFunc _task_cb;    // 定时器对象要执行的定时任务
     ReleaseFunc _release; // 用于删除TimerWheel中保存的定时器对象信息
 public:
-    TimerTask(uint64_t id, uint32_t delay, const TaskFunc &cb) : _id(id), _timeout(delay), _task_cb(cb), _canceled(false) {}
+    TimerTask(uint64_t id, uint32_t delay, const TaskFunc &cb) :
+                    _id(id), _timeout(delay), _task_cb(cb), _canceled(false) {}
     ~TimerTask()
     {
         if (_canceled == false)
@@ -1102,8 +1103,9 @@ private:
     }
 
 public:
-    Connection(EventLoop *loop, uint64_t conn_id, int sockfd) : _conn_id(conn_id), _sockfd(sockfd), _enable_inactive_release(false),
-                                                                _loop(loop), _statu(CONNECTING), _socket(_sockfd), _channel(loop, _sockfd)
+    Connection(EventLoop *loop, uint64_t conn_id, int sockfd) : 
+                    _conn_id(conn_id), _sockfd(sockfd), _enable_inactive_release(false),
+                    _loop(loop), _statu(CONNECTING), _socket(_sockfd), _channel(loop, _sockfd)
     {
         _channel.SetCloseCallback(std::bind(&Connection::HandleClose, this));
         _channel.SetEventCallback(std::bind(&Connection::HandleEvent, this));
