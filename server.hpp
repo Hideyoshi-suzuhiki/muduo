@@ -571,8 +571,7 @@ private:
     TaskFunc _task_cb;    // 定时器对象要执行的定时任务
     ReleaseFunc _release; // 用于删除TimerWheel中保存的定时器对象信息
 public:
-    TimerTask(uint64_t id, uint32_t delay, const TaskFunc &cb) :
-                    _id(id), _timeout(delay), _task_cb(cb), _canceled(false) {}
+    TimerTask(uint64_t id, uint32_t delay, const TaskFunc &cb) : _id(id), _timeout(delay), _task_cb(cb), _canceled(false) {}
     ~TimerTask()
     {
         if (_canceled == false)
@@ -695,7 +694,6 @@ public:
     /*定时器中有个_timers成员，定时器信息的操作有可能在多线程中进行，因此需要考虑线程安全问题*/
     /*如果不想加锁，那就把对定期的所有操作，都放到一个线程中进行*/
     void TimerAdd(uint64_t id, uint32_t delay, const TaskFunc &cb);
-    // 刷新/延迟定时任务
     void TimerRefresh(uint64_t id);
     void TimerCancel(uint64_t id);
     /*这个接口存在线程安全问题--这个接口实际上不能被外界使用者调用，只能在模块内，在对应的EventLoop线程内执行*/
@@ -848,10 +846,7 @@ public:
     void UpdateEvent(Channel *channel) { return _poller.UpdateEvent(channel); }
     // 移除描述符的监控
     void RemoveEvent(Channel *channel) { return _poller.RemoveEvent(channel); }
-    void TimerAdd(uint64_t id, uint32_t delay, const TaskFunc &cb)
-    {
-        return _timer_wheel.TimerAdd(id, delay, cb);
-    }
+    void TimerAdd(uint64_t id, uint32_t delay, const TaskFunc &cb) { return _timer_wheel.TimerAdd(id, delay, cb); }
     void TimerRefresh(uint64_t id) { return _timer_wheel.TimerRefresh(id); }
     void TimerCancel(uint64_t id) { return _timer_wheel.TimerCancel(id); }
     bool HasTimer(uint64_t id) { return _timer_wheel.HasTimer(id); }
@@ -1103,9 +1098,8 @@ private:
     }
 
 public:
-    Connection(EventLoop *loop, uint64_t conn_id, int sockfd) : 
-                    _conn_id(conn_id), _sockfd(sockfd), _enable_inactive_release(false),
-                    _loop(loop), _statu(CONNECTING), _socket(_sockfd), _channel(loop, _sockfd)
+    Connection(EventLoop *loop, uint64_t conn_id, int sockfd) : _conn_id(conn_id), _sockfd(sockfd), _enable_inactive_release(false),
+                                                                _loop(loop), _statu(CONNECTING), _socket(_sockfd), _channel(loop, _sockfd)
     {
         _channel.SetCloseCallback(std::bind(&Connection::HandleClose, this));
         _channel.SetEventCallback(std::bind(&Connection::HandleEvent, this));
@@ -1368,3 +1362,17 @@ public:
         _baseloop.Start();
     }
 };
+
+void TimerWheel::TimerAdd(uint64_t id, uint32_t delay, const TaskFunc &cb)
+{
+    _loop->RunInLoop(std::bind(&TimerWheel::TimerAddInLoop, this, id, delay, cb));
+}
+// 刷新/延迟定时任务
+void TimerWheel::TimerRefresh(uint64_t id)
+{
+    _loop->RunInLoop(std::bind(&TimerWheel::TimerRefreshInLoop, this, id));
+}
+void TimerWheel::TimerCancel(uint64_t id)
+{
+    _loop->RunInLoop(std::bind(&TimerWheel::TimerCancelInLoop, this, id));
+}
