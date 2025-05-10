@@ -63,27 +63,30 @@
 你需要创建一个 `main` 函数来实例化并启动 `TcpServer`。以下是一个非常基础的示例框架：
 
 ```cpp
-// main.cpp
-#include "server.h"
+#include "server.hpp"
 #include <iostream>
 
-void onConnection(const PtrConnection& conn) {
-    if (conn->Connected()) {
+void onConnection(const PtrConnection &conn)
+{
+    if (conn->Connected())
+    {
         std::cout << "New connection: " << conn->id() << " from " << "some_ip_port_info_here" << std::endl;
-        // 你可以在这里获取客户端IP和端口，但 Connection 类目前没有直接提供
-    } else {
+    }
+    else
+    {
         std::cout << "Connection closed: " << conn->id() << std::endl;
     }
 }
 
-void onMessage(const PtrConnection& conn, Buffer* buf) {
+void onMessage(const PtrConnection &conn, Buffer *buf)
+{
     std::string msg = buf->ReadAsStringAndPop(buf->ReadAbleSize());
     std::cout << "Received from " << conn->id() << ": " << msg << std::endl;
-    // 回显
     conn->Send(msg.c_str(), msg.length());
 }
 
-int main() {
+int main()
+{
     int port = 8080;
     TcpServer server(port);
 
@@ -92,9 +95,7 @@ int main() {
     server.SetMessageCallback(onMessage);
     // server.SetClosedCallback(...); // 如果需要单独处理关闭回调
     // server.EnableInactiveRelease(60); // 60秒无通信则断开
-
     std::cout << "Server starting on port " << port << std::endl;
     server.Start(); // 启动服务器的事件循环
-
     return 0;
 }
