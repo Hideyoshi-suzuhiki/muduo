@@ -16,7 +16,6 @@
 ```
 
 *   `echo.hpp`: 包含一个简单的 EchoServer 示例，演示了如何使用该网络库。
-*   `main`: 编译生成的可执行文件。
 *   `main.cc`: 项目的入口文件，实例化并启动 EchoServer。
 *   `Makefile`: 用于编译项目的 Makefile。
 *   `server.hpp`: 包含网络库的核心组件，如 Buffer, Socket, Channel, Poller, TimerTask, TimerWheel, EventLoop, LoopThread, LoopThreadPool 和 TcpServer。
