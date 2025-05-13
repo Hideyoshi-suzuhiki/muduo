@@ -10,7 +10,6 @@
 ```
 .
 ├── echo.hpp
-├── main
 ├── main.cc
 ├── Makefile
 └── server.hpp
