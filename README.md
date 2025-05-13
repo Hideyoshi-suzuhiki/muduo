@@ -1,101 +1,111 @@
-# C++ 事件驱动网络库
+```markdown
+# C++ Network Library
 
-这是一个使用 C++ (主要基于 C++11 及以上特性) 编写的、基于事件驱动（Reactor 模式）的网络编程库。它旨在提供一个简洁、易用且具备一定性能基础的 TCP 服务端开发框架。
+这是一个基于 C++ 实现的简单网络库，旨在提供一个基础的 TCP 服务器框架。该库利用 epoll 进行 I/O 多路复用，并包含了一个简单的定时器轮机制用于处理非活跃连接。
 
-## 主要特性
+## 项目结构
 
-*   **事件驱动**: 基于 Epoll (Linux) 实现 I/O 多路复用，高效处理并发连接。
-*   **线程模型**: 支持 "one loop per thread" 的多线程模型，主线程 (BaseLoop) 负责接受新连接，然后将连接分发给子线程 (SubLoop) 的 `EventLoop` 进行处理，充分利用多核 CPU。
-*   **TCP 服务封装**:
-    *   `TcpServer`: 高层 TCP 服务器封装，简化服务器搭建。
-    *   `Connection`: TCP 连接的抽象，管理连接的生命周期和数据收发。
-    *   `Acceptor`: 用于接受新的 TCP 连接。
-*   **缓冲区管理**:
-    *   `Buffer`: 内置可自动增长的环形缓冲区，方便网络数据的读写和管理。
-*   **定时器**:
-    *   `TimerWheel`: 基于时间轮实现的定时器，可用于处理连接超时、心跳检测等周期性或延时任务。
-*   **异步任务队列**:
-    *   `EventLoop` 内置任务队列，支持将任务从其他线程安全地提交到 `EventLoop` 所在线程执行。
-*   **日志系统**:
-    *   提供简单的宏定义日志工具，方便调试和追踪。
+项目的目录结构如下：
 
-## 核心组件
+```
+.
+├── echo.hpp
+├── main
+├── main.cc
+├── Makefile
+└── server.hpp
+```
 
-*   `Socket`: 对底层 Socket API 的基本封装（创建、绑定、监听、连接、读写、关闭等）。
-*   `Channel`: 代表一个文件描述符（如 Socket fd）及其关注的事件和事件发生时的回调函数。它是 `EventLoop` 和具体 I/O 操作之间的桥梁。
-*   `Poller`: `epoll` 的封装，负责监控多个 `Channel` 的事件。
-*   `EventLoop`: 事件循环的核心，驱动整个事件处理流程。每个线程通常拥有一个 `EventLoop` 对象。
-*   `Buffer`: 高效的读写缓冲区。
-*   `Connection`: TCP 连接的抽象，封装了连接状态、输入输出缓冲区以及相关的回调。
-*   `Acceptor`: 负责监听端口，接受新连接，并将新连接的 `fd` 交给 `TcpServer` 处理。
-*   `TcpServer`: TCP 服务器的高级封装，整合了 `Acceptor`、`EventLoop` 和 `Connection` 管理。
-*   `TimerTask` & `TimerWheel`: 定时器任务和时间轮实现。
-*   `LoopThread` & `LoopThreadPool`: 用于创建和管理 "one loop per thread" 的线程池。
-*   `Any`: 一个简单的类型安全容器，用于在 `Connection` 中存储用户自定义上下文数据。
+*   `echo.hpp`: 包含一个简单的 EchoServer 示例，演示了如何使用该网络库。
+*   `main`: 编译生成的可执行文件。
+*   `main.cc`: 项目的入口文件，实例化并启动 EchoServer。
+*   `Makefile`: 用于编译项目的 Makefile。
+*   `server.hpp`: 包含网络库的核心组件，如 Buffer, Socket, Channel, Poller, TimerTask, TimerWheel, EventLoop, LoopThread, LoopThreadPool 和 TcpServer。
 
-## 如何编译与运行
+## 构建和运行
 
-1.  **环境要求**:
-    *   Linux 操作系统 (因为使用了 `epoll`, `eventfd`, `timerfd`)
-    *   支持 C++11 或更高版本的 C++ 编译器 (如 G++)
-    *   需要链接 `pthread` 库。
+### 依赖
 
-2.  **编译**:
-    由于这是一个库性质的代码，你可以将其源文件加入到你的项目中进行编译。一个简单的编译命令示例（假设所有 `.cpp` 文件都在当前目录，并且你有一个 `main.cpp` 来使用这个库）：
+*   C++11 或更高版本的编译器 (如 g++)
+*   Linux 环境 (由于使用了 epoll)
 
-    ```bash
-    g++ -o my_server main.cpp *.cpp -std=c++17 -pthread -Wall -g
-    ```
-    *   `-std=c++17`: 根据代码中使用的特性（如 `std::bind` 占位符等），C++11/14/17 应该都可以。
-    *   `-pthread`: 链接 POSIX 线程库。
-    *   `-Wall`: 开启所有警告。
-    *   `-g`: 生成调试信息。
-    *(请根据你的实际文件组织和需求调整编译命令)*
+### 构建
 
-3.  **运行**:
-    编译成功后，会生成一个可执行文件 (例如 `my_server`)。
-    ```bash
-    ./my_server
-    ```
+在项目根目录下执行以下命令进行编译：
 
-## 使用示例
+```bash
+make
+```
 
-你需要创建一个 `main` 函数来实例化并启动 `TcpServer`。以下是一个非常基础的示例框架：
+这将生成一个名为 `main` 的可执行文件。
 
-```cpp
-#include "server.hpp"
-#include <iostream>
+### 运行
 
-void onConnection(const PtrConnection &conn)
-{
-    if (conn->Connected())
-    {
-        std::cout << "New connection: " << conn->id() << " from " << "some_ip_port_info_here" << std::endl;
-    }
-    else
-    {
-        std::cout << "Connection closed: " << conn->id() << std::endl;
-    }
-}
+执行以下命令启动 EchoServer：
 
-void onMessage(const PtrConnection &conn, Buffer *buf)
-{
-    std::string msg = buf->ReadAsStringAndPop(buf->ReadAbleSize());
-    std::cout << "Received from " << conn->id() << ": " << msg << std::endl;
-    conn->Send(msg.c_str(), msg.length());
-}
+```bash
+./main
+```
 
-int main()
-{
-    int port = 8080;
-    TcpServer server(port);
+默认情况下，EchoServer 将监听 8080 端口。你可以使用 `telnet` 或其他客户端工具连接到服务器进行测试。例如：
 
-    server.SetThreadCount(4); // 设置工作线程数量
-    server.SetConnectedCallback(onConnection);
-    server.SetMessageCallback(onMessage);
-    // server.SetClosedCallback(...); // 如果需要单独处理关闭回调
-    // server.EnableInactiveRelease(60); // 60秒无通信则断开
-    std::cout << "Server starting on port " << port << std::endl;
-    server.Start(); // 启动服务器的事件循环
-    return 0;
-}
+```bash
+telnet 127.0.0.1 8080
+```
+
+在 telnet 客户端中输入任何文本，服务器会将相同的文本回显给你。
+
+### 清理
+
+执行以下命令清理编译生成的文件：
+
+```bash
+make clean
+```
+
+## 代码说明
+
+### 核心组件
+
+*   **Buffer**: 实现了一个动态大小的缓冲区，用于存储网络数据的读写。
+*   **Socket**: 封装了套接字相关的系统调用，提供了创建、绑定、监听、连接、发送和接收等功能。
+*   **Channel**: 代表一个文件描述符及其关注的事件和事件发生时的回调函数。它是 EventLoop 和具体 I/O 操作之间的桥梁。
+*   **Poller**: 封装了 Linux epoll I/O 多路复用机制，负责监控多个 Channel 的事件，并在事件发生时通知它们。
+*   **TimerTask / TimerWheel**: 实现了一个简单的定时器轮机制，用于管理定时任务，例如非活跃连接的超时销毁。
+*   **EventLoop**: 事件循环的核心，通常每个线程拥有一个 EventLoop 对象。它负责运行事件循环、管理 Channel、处理 I/O 事件和定时器事件，以及执行跨线程提交的任务。
+*   **LoopThread / LoopThreadPool**: 用于创建和管理 EventLoop 线程池，实现多线程处理网络连接。
+*   **TcpServer**: 提供了 TCP 服务器的基本框架，负责接受新连接、管理连接以及分发事件回调。
+
+### EchoServer 示例
+
+`EchoServer` 是一个简单的示例应用，演示了如何使用 `TcpServer` 构建一个回显服务器。它设置了连接建立、消息接收和连接关闭的回调函数。
+
+*   `OnConnected`: 在新连接建立时调用。
+*   `OnClosed`: 在连接关闭时调用。
+*   `OnMessage`: 在接收到客户端消息时调用，并将接收到的数据回显给客户端，然后关闭连接。
+
+## 特点
+
+*   基于 epoll 的高性能 I/O 多路复用。
+*   多线程支持，通过 EventLoop 线程池处理并发连接。
+*   简单的定时器轮机制，支持非活跃连接超时销毁。
+*   模块化的设计，易于扩展和修改。
+
+## 待办事项和潜在改进
+
+*   增加对 UDP 的支持。
+*   实现更完善的错误处理和日志记录。
+*   增加对 TLS/SSL 的支持。
+*   实现更高级的协议解析和处理机制。
+*   进行性能测试和优化。
+*   编写单元测试。
+
+## 贡献
+
+欢迎对本项目做出贡献。如果你发现任何 bug 或有改进建议，请提交 issue 或 pull request。
+
+## 许可证
+
+本项目采用 [MIT 许可证](LICENSE) 开源。
+
+```
