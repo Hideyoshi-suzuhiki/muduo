@@ -839,7 +839,11 @@ public:
     }
     // 向_event_fd文件描述符写入数据
     // 其目的是为了唤醒EventLoop对应的线程,使其从epoll_wait状态出来
-
+    // _event_fd是一个特殊的文件描述符,是内核的eventfd的外在表现形式
+    // eventfd的创建来源于CreateEventFd()的eventfd()函数
+    // 这个函数不仅返回一个int值,也在内核里面创建一个eventfd,外界的_event_fd是外在表现
+    // 当eventfd为0的时候就是不可读的,当写入一个数据的时候,其计数器就会+1
+    // 非0的时候就是可读的了,所以QueueInLoop()函数里面需要加上这一步唤醒线程
     void WeakUpEventfd()
     {
         uint64_t val = 1;
@@ -885,7 +889,7 @@ public:
             std::unique_lock<std::mutex> _lock(_mutex);
             _tasks.push_back(cb);
         }
-        WeakUpEventfd(); // 我不禁思考,为什么要在这里写入eventfd?
+        WeakUpEventfd();
         return;
     }
     void UpdateEvent(Channel *channel) { return _poller.UpdateEvent(channel); }
@@ -1290,7 +1294,7 @@ private:
         {
             std::unique_lock<std::mutex> lock(_mutex);
             _loop = &loop;
-            _cond.notify_all();
+            _cond.notify_all(); // 通知主线程EventLoop已经创建
         }
         loop.Start();
     }
@@ -1324,19 +1328,24 @@ public:
     {
         _thread_count = count;
     }
-    void Create()
-    {
-        if (_thread_count > 0)
+        void Create()
         {
-            _threads.resize(_thread_count);
-            _loops.resize(_thread_count);
-            for (int i = 0; i < _thread_count; ++i)
+            if (_thread_count > 0)
             {
-                _threads[i] = new LoopThread();
-                _loops[i] = _threads[i]->GetLoop();
+                _threads.resize(_thread_count);
+                _loops.resize(_thread_count);
+                for (int i = 0; i < _thread_count; ++i)
+                {
+                    // 这里已经通过Echoserver的set函数设置好了线程数量
+                    // 用两个数组是为了方便快速地访问和分配EventLoop
+                    // new LoopThread的时候会执行构造函数里面的ThreadEntry
+                    // 这就意味着会分配对应的EventLoop给线程,并且在最后执行EventLoop::Start()
+                    // 从属EventLoop得以开始循环
+                    _threads[i] = new LoopThread();
+                    _loops[i] = _threads[i]->GetLoop();
+                }
             }
         }
-    }
     EventLoop *NextLoop()
     {
         if (_thread_count == 0)
@@ -1416,6 +1425,7 @@ public:
         _acceptor.SetAcceptCallback(std::bind(&TcpServer::NewConnection, this, std::placeholders::_1));
         _acceptor.Listen(); // 将监听套接字挂到baseloop上
     }
+    // 这五个函数都会在echoserver开始的时候作为构造函数的一部分自动执行的,直接影响了
     // 设置从属线程池的线程数量
     void SetThreadCount(int count) { return _pool.SetThreadCount(count); }
     // 设置连接建立回调函数
@@ -1437,9 +1447,12 @@ public:
     {
         _baseloop.RunInLoop(std::bind(&TcpServer::RunAfterInLoop, this, task, delay));
     }
+    // 整个代码的运行,要从这里开始...
+    // 一个LoopThreadPool和EventLoop的运行开始
     void Start()
     {
         _pool.Create();
+        // 这个是主EventLoop的开始运行
         _baseloop.Start();
     }
 };
