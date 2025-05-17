@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>单人围棋</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+
+        .board-container {
+            position: relative;
+            width: 500px;
+            /* 调整棋盘大小 */
+            height: 500px;
+            /* 调整棋盘大小 */
+            background-color: #d9a36b;
+            /* 棋盘颜色 */
+            border: 2px solid #333;
+            box-sizing: border-box;
+        }
+
+        .grid-line {
+            position: absolute;
+            background-color: #333;
+        }
+
+        .vertical {
+            width: 1px;
+        }
+
+        .horizontal {
+            height: 1px;
+        }
+
+        .intersection {
+            position: absolute;
+            width: 20px;
+            /* 调整交叉点可点击区域 */
+            height: 20px;
+            /* 调整交叉点可点击区域 */
+            cursor: pointer;
+            /* 用于调试，显示可点击区域 */
+            /* border: 1px solid red; */
+        }
+
+        .stone {
+            position: absolute;
+            width: 20px;
+            /* 调整棋子大小 */
+            height: 20px;
+            /* 调整棋子大小 */
+            border-radius: 50%;
+            pointer-events: none;
+            /* 避免棋子阻挡点击 */
+        }
+
+        .black {
+            background-color: black;
+        }
+
+        .white {
+            background-color: white;
+            border: 1px solid #333;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="board-container" id="boardContainer">
+        <!-- 棋盘网格线和交叉点将由 JavaScript 生成 -->
+    </div>
+
+    <script>
+        const boardSize = 19; // 棋盘大小 (19x19)
+        const boardContainer = document.getElementById('boardContainer');
+        const cellSize = 500 / (boardSize - 1); // 计算每个格子的大小
+
+        let boardState = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0)); // 0: 空, 1: 黑子, 2: 白子
+        let currentPlayer = 1; // 1: 黑子, 2: 白子
+
+        // 生成棋盘网格线和交叉点
+        function createBoard() {
+            for (let i = 0; i < boardSize; i++) {
+                // 垂直线
+                const verticalLine = document.createElement('div');
+                verticalLine.classList.add('grid-line', 'vertical');
+                verticalLine.style.left = `${i * cellSize + cellSize / 2}px`;
+                verticalLine.style.top = `${cellSize / 2}px`;
+                verticalLine.style.height = `${500 - cellSize}px`;
+                boardContainer.appendChild(verticalLine);
+
+                // 水平线
+                const horizontalLine = document.createElement('div');
+                horizontalLine.classList.add('grid-line', 'horizontal');
+                horizontalLine.style.top = `${i * cellSize + cellSize / 2}px`;
+                horizontalLine.style.left = `${cellSize / 2}px`;
+                horizontalLine.style.width = `${500 - cellSize}px`;
+                boardContainer.appendChild(horizontalLine);
+            }
+
+            // 生成交叉点
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    const intersection = document.createElement('div');
+                    intersection.classList.add('intersection');
+                    intersection.style.left = `${j * cellSize + cellSize / 2 - 10}px`; // 调整位置使其居中
+                    intersection.style.top = `${i * cellSize + cellSize / 2 - 10}px`; // 调整位置使其居中
+                    intersection.dataset.row = i;
+                    intersection.dataset.col = j;
+                    intersection.addEventListener('click', handleIntersectionClick);
+                    boardContainer.appendChild(intersection);
+                }
+            }
+        }
+
+        // 处理交叉点点击事件
+        function handleIntersectionClick(event) {
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+
+            // 如果该位置已经有子，则不落子
+            if (boardState[row][col] !== 0) {
+                return;
+            }
+
+            // 落子
+            boardState[row][col] = currentPlayer;
+            renderBoard();
+
+            // 检查提子
+            checkCaptures(row, col);
+
+            // 切换玩家
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+        }
+
+        // 渲染棋盘
+        function renderBoard() {
+            // 移除所有棋子
+            const existingStones = boardContainer.querySelectorAll('.stone');
+            existingStones.forEach(stone => stone.remove());
+
+            // 根据 boardState 绘制棋子
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (boardState[i][j] !== 0) {
+                        const stone = document.createElement('div');
+                        stone.classList.add('stone', boardState[i][j] === 1 ? 'black' : 'white');
+                        stone.style.left = `${j * cellSize + cellSize / 2 - 10}px`; // 调整位置使其居中
+                        stone.style.top = `${i * cellSize + cellSize / 2 - 10}px`; // 调整位置使其居中
+                        boardContainer.appendChild(stone);
+                    }
+                }
+            }
+        }
+
+        // 检查提子
+        function checkCaptures(lastMoveRow, lastMoveCol) {
+            const opponent = currentPlayer === 1 ? 2 : 1;
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // 上下左右
+
+            directions.forEach(direction => {
+                const neighborRow = lastMoveRow + direction[0];
+                const neighborCol = lastMoveCol + direction[1];
+
+                // 检查相邻位置是否为对手的棋子
+                if (isValidPosition(neighborRow, neighborCol) && boardState[neighborRow][neighborCol] === opponent) {
+                    const group = [];
+                    const visited = Array(boardSize).fill(null).map(() => Array(boardSize).fill(false));
+                    if (isGroupCaptured(neighborRow, neighborCol, opponent, group, visited)) {
+                        // 提子
+                        group.forEach(stone => {
+                            boardState[stone[0]][stone[1]] = 0;
+                        });
+                        renderBoard();
+                    }
+                }
+            });
+        }
+
+        // 检查一个棋子所在的组是否被提子
+        function isGroupCaptured(row, col, stoneType, group, visited) {
+            if (!isValidPosition(row, col) || visited[row][col]) {
+                return true; // 边界或已访问，不影响气
+            }
+            if (boardState[row][col] === 0) {
+                return false; // 遇到气，组未被提
+            }
+            if (boardState[row][col] !== stoneType) {
+                return true; // 遇到不同颜色的棋子，不影响气
+            }
+
+            visited[row][col] = true;
+            group.push([row, col]);
+
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            let hasLiberty = false;
+            directions.forEach(direction => {
+                const nextRow = row + direction[0];
+                const nextCol = col + direction[1];
+                if (!isGroupCaptured(nextRow, nextCol, stoneType, group, visited)) {
+                    hasLiberty = true;
+                }
+            });
+
+            return !hasLiberty; // 如果没有气，则被提
+        }
+
+        // 检查位置是否有效
+        function isValidPosition(row, col) {
+            return row >= 0 && row < boardSize && col >= 0 && col < boardSize;
+        }
+
+        // 初始化棋盘
+        createBoard();
+    </script>
+
+</body>
+
+</html>

@@ -199,6 +199,212 @@ public:
     }
 };
 
+// #define MAX_LISTEN 1024
+// class Socket
+// {
+// private:
+//     int _sockfd;
+
+// public:
+//     Socket() : _sockfd(-1) {}
+//     Socket(int fd) : _sockfd(fd) {}
+//     ~Socket()
+//     {
+//         std::cout << "socket close~" << std::endl;
+//         Close();
+//     }
+//     int Fd() { return _sockfd; }
+//     // 创建套接字
+//     bool Create()
+//     {
+//         // int socket(int domain, int type, int protocol)
+//         _sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+//         if (_sockfd < 0)
+//         {
+//             ERR_LOG("创建失败了f!!");
+//             return false;
+//         }
+//         return true;
+//     }
+//     // 绑定地址信息
+//     bool Bind(const std::string &ip, uint16_t port)
+//     {
+//         struct sockaddr_in addr;
+//         addr.sin_family = AF_INET;                    // 设置IPV4
+//         addr.sin_port = htons(port);                  // 设置端口号
+//         addr.sin_addr.s_addr = inet_addr(ip.c_str()); // 设置IP地址(点分十进制->网络字节序)
+//         socklen_t len = sizeof(struct sockaddr_in);
+//         // int bind(int sockfd, struct sockaddr*addr, socklen_t len);
+//         int ret = bind(_sockfd, (struct sockaddr *)&addr, len);
+//         if (ret < 0)
+//         {
+//             ERR_LOG("BIND ADDRESS FAILED!");
+//             return false;
+//         }
+//         return true;
+//     }
+//     // 开始监听
+//     bool Listen(int backlog = MAX_LISTEN)
+//     {
+//         // int listen(int backlog)
+//         int ret = listen(_sockfd, backlog);
+//         if (ret < 0)
+//         {
+//             ERR_LOG("SOCKET LISTEN FAILED!");
+//             return false;
+//         }
+//         return true;
+//     }
+//     // 向服务器发起连接
+//     bool Connect(const std::string &ip, uint16_t port)
+//     {
+//         struct sockaddr_in addr;
+//         addr.sin_family = AF_INET;
+//         addr.sin_port = htons(port);
+//         addr.sin_addr.s_addr = inet_addr(ip.c_str());
+//         socklen_t len = sizeof(struct sockaddr_in);
+//         // int connect(int sockfd, struct sockaddr*addr, socklen_t len);
+//         int ret = connect(_sockfd, (struct sockaddr *)&addr, len);
+//         if (ret < 0)
+//         {
+//             ERR_LOG("CONNECT SERVER FAILED!");
+//             return false;
+//         }
+//         return true;
+//     }
+//     // 获取新连接
+//     int Accept()
+//     {
+//         // int accept(int sockfd, struct sockaddr *addr, socklen_t *len);
+//         int newfd = accept(_sockfd, NULL, NULL);
+//         if (newfd < 0)
+//         {
+//             ERR_LOG("SOCKET ACCEPT FAILED!");
+//             return -1;
+//         }
+//         return newfd;
+//     }
+
+//     // 接收数据
+//     ssize_t Recv(void *buf, size_t len, int flag = 0)
+//     {
+//         // ssize_t recv(int sockfd, void *buf, size_t len, int flag);
+//         // ssize_t ret = recv(_sockfd, buf, len, flag);
+//         // if (ret <= 0)
+//         // {
+//         //     // EAGAIN 当前socket的接收缓冲区中没有数据了，在非阻塞的情况下才会有这个错误
+//         //     // EINTR  表示当前socket的阻塞等待，被信号打断了，
+//         //     if (errno == EAGAIN || errno == EINTR)
+//         //     {
+//         //         return 0; // 表示这次接收没有接收到数据
+//         //     }
+//         //     ERR_LOG("SOCKET RECV FAILED!!");
+//         //     return -1;
+//         // }
+//         // return ret; // 实际接收的数据长度
+//         ssize_t ret = recv(_sockfd, buf, len, flag);
+//         if (ret == 0)
+//         {
+//             return 0;
+//         }
+//         if (ret < 0)
+//         {
+//             if (errno == EAGAIN || errno == EWOULDBLOCK)
+//             {
+//                 // EWOULDBLOCK 通常等于 EAGAIN
+//                 // 非阻塞调用，现在没有数据可用
+//                 // 返回 -1，调用者 **必须** 检查 errno
+//                 return -1;
+//             }
+//             else if (errno == EINTR)
+//             {
+//                 // 被信号中断
+//                 // 返回 -1，调用者 **必须** 检查 errno
+//                 return -1;
+//             }
+//             // 真正的错误
+//             ERR_LOG("SOCKET RECV 失败!! sockfd: %d, errno: %d, message: %s", _sockfd, errno, strerror(errno));
+//             return -1;
+//         }
+//         return ret; // 实际接收的数据长度
+//     }
+//     ssize_t NonBlockRecv(void *buf, size_t len)
+//     {
+//         return Recv(buf, len, MSG_DONTWAIT); // MSG_DONTWAIT 表示当前接收为非阻塞。
+//     }
+//     // 发送数据
+//     ssize_t Send(const void *buf, size_t len, int flag = 0)
+//     {
+//         // ssize_t send(int sockfd, void *data, size_t len, int flag);
+//         ssize_t ret = send(_sockfd, buf, len, flag);
+//         if (ret < 0)
+//         {
+//             if (errno == EAGAIN || errno == EINTR)
+//             {
+//                 return 0;
+//             }
+//             ERR_LOG("SOCKET SEND FAILED!!");
+//             return -1;
+//         }
+//         return ret; // 实际发送的数据长度
+//     }
+//     ssize_t NonBlockSend(void *buf, size_t len)
+//     {
+//         if (len == 0)
+//             return 0;
+//         return Send(buf, len, MSG_DONTWAIT); // MSG_DONTWAIT 表示当前发送为非阻塞。
+//     }
+//     // 关闭套接字
+//     void Close()
+//     {
+//         if (_sockfd != -1)
+//         {
+//             close(_sockfd);
+//             _sockfd = -1;
+//         }
+//     }
+//     // 创建一个服务端连接
+//     bool CreateServer(uint16_t port, const std::string &ip = "0.0.0.0", bool block_flag = false)
+//     {
+//         // 1. 创建套接字，2. 绑定地址，3. 开始监听，4. 设置非阻塞， 5. 启动地址重用
+//         if (Create() == false)
+//             return false;
+//         if (block_flag)
+//             NonBlock();
+//         if (Bind(ip, port) == false)
+//             return false;
+//         if (Listen() == false)
+//             return false;
+//         ReuseAddress();
+//         return true;
+//     }
+//     // 创建一个客户端连接
+//     bool CreateClient(uint16_t port, const std::string &ip)
+//     {
+//         // 1. 创建套接字，2.指向连接服务器
+//         if (Create() == false)
+//             return false;
+//         if (Connect(ip, port) == false)
+//             return false;
+//         return true;
+//     }
+//     // 设置套接字选项---开启地址端口重用
+//     void ReuseAddress()
+//     {
+//         // int setsockopt(int fd, int leve, int optname, void *val, int vallen)
+//         int val = 1;
+//         setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)&val, sizeof(int));
+//         val = 1;
+//         setsockopt(_sockfd, SOL_SOCKET, SO_REUSEPORT, (void *)&val, sizeof(int));
+//     }
+//     // 设置套接字阻塞属性-- 设置为非阻塞
+//     void NonBlock()
+//     {
+//         // int fcntl(int fd, int cmd, ... /* arg */ );
+//         int flag = fcntl(_sockfd, F_GETFL, 0);
+//         fcntl(_sockfd, F_SETFL, flag | O_NONBLOCK);
+//     }
+// };
 #define MAX_LISTEN 1024
 class Socket
 {
@@ -208,11 +414,7 @@ private:
 public:
     Socket() : _sockfd(-1) {}
     Socket(int fd) : _sockfd(fd) {}
-    ~Socket()
-    {
-        std::cout << "socket close~" << std::endl;
-        Close();
-    }
+    ~Socket() { Close(); }
     int Fd() { return _sockfd; }
     // 创建套接字
     bool Create()
@@ -221,18 +423,19 @@ public:
         _sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (_sockfd < 0)
         {
-            ERR_LOG("创建失败了f!!");
+            ERR_LOG("CREATE SOCKET FAILED!!");
             return false;
         }
+        std::cout << "socket创建成功" << std::endl;
         return true;
     }
     // 绑定地址信息
     bool Bind(const std::string &ip, uint16_t port)
     {
         struct sockaddr_in addr;
-        addr.sin_family = AF_INET;                    // 设置IPV4
-        addr.sin_port = htons(port);                  // 设置端口号
-        addr.sin_addr.s_addr = inet_addr(ip.c_str()); // 设置IP地址(点分十进制->网络字节序)
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr.sin_addr.s_addr = inet_addr(ip.c_str());
         socklen_t len = sizeof(struct sockaddr_in);
         // int bind(int sockfd, struct sockaddr*addr, socklen_t len);
         int ret = bind(_sockfd, (struct sockaddr *)&addr, len);
@@ -288,45 +491,21 @@ public:
     ssize_t Recv(void *buf, size_t len, int flag = 0)
     {
         // ssize_t recv(int sockfd, void *buf, size_t len, int flag);
-        // ssize_t ret = recv(_sockfd, buf, len, flag);
-        // if (ret <= 0)
-        // {
-        //     // EAGAIN 当前socket的接收缓冲区中没有数据了，在非阻塞的情况下才会有这个错误
-        //     // EINTR  表示当前socket的阻塞等待，被信号打断了，
-        //     if (errno == EAGAIN || errno == EINTR)
-        //     {
-        //         return 0; // 表示这次接收没有接收到数据
-        //     }
-        //     ERR_LOG("SOCKET RECV FAILED!!");
-        //     return -1;
-        // }
-        // return ret; // 实际接收的数据长度
         ssize_t ret = recv(_sockfd, buf, len, flag);
-        if (ret == 0)
+        if (ret <= 0)
         {
-            return 0;
-        }
-        if (ret < 0)
-        {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            // EAGAIN 当前socket的接收缓冲区中没有数据了，在非阻塞的情况下才会有这个错误
+            // EINTR  表示当前socket的阻塞等待，被信号打断了，
+            if (errno == EAGAIN || errno == EINTR)
             {
-                // EWOULDBLOCK 通常等于 EAGAIN
-                // 非阻塞调用，现在没有数据可用
-                // 返回 -1，调用者 **必须** 检查 errno
-                return -1;
+                return 0; // 表示这次接收没有接收到数据
             }
-            else if (errno == EINTR)
-            {
-                // 被信号中断
-                // 返回 -1，调用者 **必须** 检查 errno
-                return -1;
-            }
-            // 真正的错误
-            ERR_LOG("SOCKET RECV 失败!! sockfd: %d, errno: %d, message: %s", _sockfd, errno, strerror(errno));
+            ERR_LOG("SOCKET RECV FAILED!!");
             return -1;
         }
         return ret; // 实际接收的数据长度
     }
+    // 非阻塞接收
     ssize_t NonBlockRecv(void *buf, size_t len)
     {
         return Recv(buf, len, MSG_DONTWAIT); // MSG_DONTWAIT 表示当前接收为非阻塞。
@@ -431,6 +610,7 @@ public:
     Channel(EventLoop *loop, int fd) : _fd(fd), _events(0), _revents(0), _loop(loop) {}
     int Fd() { return _fd; }
     uint32_t Events() { return _events; }
+    uint32_t Revents() const { return _revents; }
     void SetRevents(uint32_t events) { _revents = events; }
     void SetReadCallback(const EventCallback &cb) { _read_callback = cb; }
     void SetWriteCallback(const EventCallback &cb) { _write_callback = cb; }
@@ -811,6 +991,7 @@ public:
             RunAllTasks();
         }
     }
+
     static int CreateEventFd()
     {
         int efd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK); // eventfd创建一个事件文件描述符
@@ -1001,45 +1182,22 @@ private:
     // 回调函数设置
     void HandleRead()
     {
-        // 接受socket的数据放在缓冲区
-        char buff[65536];
-        ssize_t ret = _socket.NonBlockRecv(buff, 65535); // 非阻塞接受
-        if (ret > 0)
+        // 1. 接收socket的数据，放到缓冲区
+        char buf[65536];
+        ssize_t ret = _socket.NonBlockRecv(buf, 65535);
+        if (ret < 0)
         {
-            // 成功读取到数据
-            _in_buffer.WriteAndPush(buff, ret);
-            // 调用 message_callback 处理
-            if (_message_callback) // 确保回调已被设置
-            {
-                _message_callback(shared_from_this(), &_in_buffer);
-            }
-            // 直到 ret <= 0，否则 epoll 会一直通知可读。
+            // 出错了,不能直接关闭连接
+            return ShutdownInloop();
         }
-        else if (ret == 0)
+        // 这里的等于0表示的是没有读取到数据，而并不是连接断开了，连接断开返回的是-1
+        // 将数据放入输入缓冲区,写入之后顺便将写偏移向后移动
+        _in_buffer.WriteAndPush(buf, ret);
+        // 2. 调用message_callback进行业务处理
+        if (_in_buffer.ReadAbleSize() > 0)
         {
-            // 对端正常关闭连接 (Recv 返回 0)
-            // 应该触发关闭处理流程
-            HandleClose();
-        }
-        else
-        {
-            // 发生错误或者暂时无数据
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                // 非阻塞模式下暂时无数据，这是正常情况，什么都不做，等待下次 epoll 通知
-                DBG_LOG("No data to read right now (EAGAIN/EWOULDBLOCK)");
-            }
-            else if (errno == EINTR)
-            {
-                // 被信号中断，可以忽略或重试，这里先忽略
-                DBG_LOG("Recv interrupted by signal (EINTR)");
-            }
-            else
-            {
-                // 真正发生了错误
-                // 触发错误处理流程
-                HandleError();
-            }
+            // shared_from_this--从当前对象自身获取自身的shared_ptr管理对象
+            return _message_callback(shared_from_this(), &_in_buffer);
         }
     }
 
@@ -1049,7 +1207,6 @@ private:
         ssize_t ret = _socket.NonBlockSend(_out_buffer.ReadPosition(), _out_buffer.ReadAbleSize());
         if (ret < 0)
         {
-            // 这里为什么要这么写呢
             if (_in_buffer.ReadAbleSize() > 0)
             {
                 _message_callback(shared_from_this(), &_in_buffer);
@@ -1058,6 +1215,16 @@ private:
         }
         // 读偏移后移
         _out_buffer.MoveReadOffset(ret);
+        if (_out_buffer.ReadAbleSize() == 0)
+        {
+            _channel.DisableWrite(); // 没有数据待发送了，关闭写事件监控
+            // 如果当前是连接待关闭状态，则有数据，发送完数据释放连接，没有数据则直接释放
+            if (_statu == DISCONNECTING)
+            {
+                return Release();
+            }
+        }
+        return;
     }
     // 描述符触发挂断事件
     void HandleClose()
@@ -1095,7 +1262,25 @@ private:
         if (_connected_callback)
             _connected_callback(shared_from_this());
     }
-
+    // 释放(释放什么的?)
+    void ReleaseInLoop()
+    {
+        _statu = DISCONNECTED;
+        _channel.Remove();
+        _socket.Close();
+        if (_loop->HasTimer(_conn_id))
+        {
+            CancelInactiveReleaseInLoop();
+        }
+        if (_closed_callback)
+        {
+            _closed_callback(shared_from_this());
+        }
+        if (_server_closed_callback)
+        {
+            _server_closed_callback(shared_from_this());
+        }
+    }
     // 将数据加入缓冲区
     void SendInLoop(Buffer &buf)
     {
@@ -1122,26 +1307,19 @@ private:
                 // Q:这个share_from_this又是什么......
             }
         }
-    }
-    // 释放(释放什么的?)
-    void ReleaseInLoop()
-    {
-        _statu = DISCONNECTED;
-        _channel.Remove();
-        _socket.Close();
-        if (_loop->HasTimer(_conn_id))
+        if (_out_buffer.ReadAbleSize() > 0)
         {
-            CancelInactiveReleaseInLoop();
+            if (_channel.WriteAble() == false)
+            {
+                _channel.EnableWrite();
+            }
         }
-        if (_closed_callback)
+        if (_out_buffer.ReadAbleSize() == 0)
         {
-            _closed_callback(shared_from_this());
-        }
-        if (_server_closed_callback)
-        {
-            _server_closed_callback(shared_from_this());
+            Release();
         }
     }
+
     void EnableInactiveReleaseInLoop(int sec)
     {
         // 设置非活跃销毁标志
@@ -1186,12 +1364,12 @@ public:
         _channel.SetWriteCallback(std::bind(&Connection::HandleWrite, this));
         _channel.SetErrorCallback(std::bind(&Connection::HandleError, this));
     }
-    ~Connection() {}
+    ~Connection() { DBG_LOG("RELEASE CONNECTION:%p", this); }
     int fd() { return _sockfd; }
     int id() { return _conn_id; }
     bool Connected() { return (_statu == CONNECTED); }
     void SetContext(const Any &context) { _context = context; }
-    Any GetContext() { return _context; }
+    Any* GetContext() { return &_context; }
     void SetConnectedCallback(const ConnectCallback &cb) { _connected_callback = cb; }
     void SetMessageCallback(const MessageCallback &cb) { _message_callback = cb; }
     void SetClosedCallback(const ClosedCallback &cb) { _closed_callback = cb; }
@@ -1199,9 +1377,13 @@ public:
     void SetSrvClosedCallback(const ClosedCallback &cb) { _server_closed_callback = cb; }
 
     // 连接建立就绪后，进行channel回调设置，启动读监控，调用_connected_callback
+    // void Established()
+    // {
+    //     _loop->RunInLoop(std::bind(&Connection::EstablishedInLoop, this));
+    // }
     void Established()
     {
-        _loop->RunInLoop(std::bind(&Connection::EstablishedInLoop, this));
+        _loop->RunInLoop(std::bind(&Connection::EstablishedInLoop, shared_from_this())); // 注意这里用 shared_from_this()
     }
     // 发送数据,把数据放到发送缓冲区
     void Send(const char *data, ssize_t len)
@@ -1256,6 +1438,7 @@ private:
         if (_accept_callback)
             _accept_callback(newfd);
     }
+
     int CreateServer(int port)
     {
         bool ret = _socket.CreateServer(port);
@@ -1328,24 +1511,24 @@ public:
     {
         _thread_count = count;
     }
-        void Create()
+    void Create()
+    {
+        if (_thread_count > 0)
         {
-            if (_thread_count > 0)
+            _threads.resize(_thread_count);
+            _loops.resize(_thread_count);
+            for (int i = 0; i < _thread_count; ++i)
             {
-                _threads.resize(_thread_count);
-                _loops.resize(_thread_count);
-                for (int i = 0; i < _thread_count; ++i)
-                {
-                    // 这里已经通过Echoserver的set函数设置好了线程数量
-                    // 用两个数组是为了方便快速地访问和分配EventLoop
-                    // new LoopThread的时候会执行构造函数里面的ThreadEntry
-                    // 这就意味着会分配对应的EventLoop给线程,并且在最后执行EventLoop::Start()
-                    // 从属EventLoop得以开始循环
-                    _threads[i] = new LoopThread();
-                    _loops[i] = _threads[i]->GetLoop();
-                }
+                // 这里已经通过Echoserver的set函数设置好了线程数量
+                // 用两个数组是为了方便快速地访问和分配EventLoop
+                // new LoopThread的时候会执行构造函数里面的ThreadEntry
+                // 这就意味着会分配对应的EventLoop给线程,并且在最后执行EventLoop::Start()
+                // 从属EventLoop得以开始循环
+                _threads[i] = new LoopThread();
+                _loops[i] = _threads[i]->GetLoop();
             }
         }
+    }
     EventLoop *NextLoop()
     {
         if (_thread_count == 0)
@@ -1470,3 +1653,14 @@ void TimerWheel::TimerCancel(uint64_t id)
 {
     _loop->RunInLoop(std::bind(&TimerWheel::TimerCancelInLoop, this, id));
 }
+
+class NetWork
+{
+public:
+    NetWork()
+    {
+        DBG_LOG("SIGPIPE INIT");
+        signal(SIGPIPE, SIG_IGN);
+    }
+};
+static NetWork nw;
